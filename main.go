@@ -17,7 +17,7 @@ import (
 func Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(
-		render.SetContentType(render.ContentTypeJSON), // Set content-Type headers as application/json
+		render.SetContentType(render.ContentTypeJSON),
 		middleware.Logger,          // Log API request calls
 		middleware.DefaultCompress, // Compress results, mostly gzipping assets and json
 		middleware.RedirectSlashes, // Redirect slashes to no slash URL versions
@@ -73,6 +73,7 @@ func RackEmPost(w http.ResponseWriter, r *http.Request) {
 
 //RackEmGet the main function that calculates a desired weight based on default inputs
 func RackEmGet(w http.ResponseWriter, r *http.Request) {
+	defaultWeights := AssumeDefaults()
 	weight, err := strconv.ParseInt(r.URL.Query().Get("weight"), 10, 64)
 
 	if err != nil {
@@ -80,7 +81,7 @@ func RackEmGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, hasError := CalculateWeight(&DefaultWeights, weight)
+	results, hasError := CalculateWeight(&defaultWeights, weight)
 
 	if hasError {
 		render.Render(w, r, ErrInternal())
@@ -97,6 +98,8 @@ func CalculateWeight(input *RackInputStandard, weight int64) (RackInputStandard,
 	rawResult := map[string]int{}
 	leftOver := int(weight) - input.BarWeight
 	reflection := reflect.ValueOf(input).Elem()
+	achievedAmount := input.BarWeight
+	var result RackInputStandard
 
 	for leftOver > 0 {
 		found := false
@@ -113,6 +116,8 @@ func CalculateWeight(input *RackInputStandard, weight int64) (RackInputStandard,
 			if amount <= leftOver {
 				leftOver -= amount
 				rawResult[fieldName]++
+				achievedAmount += amount
+				input.DecreaseWeight(fieldName)
 				found = true
 				break
 			}
@@ -120,11 +125,14 @@ func CalculateWeight(input *RackInputStandard, weight int64) (RackInputStandard,
 		if !found {
 			break
 		}
-		fmt.Println("leftover", leftOver)
 	}
 
-	var result RackInputStandard
-	mapstructure.Decode(rawResult, &result)
+	er := mapstructure.Decode(rawResult, &result)
+	if er != nil {
+		return result, true
+	}
+	fmt.Println("achieved", achievedAmount, "required", weight)
+	fmt.Println("input", input)
 	return result, false
 }
 
@@ -135,6 +143,7 @@ type RackInputStandard struct {
 	BarWeight      int `json:"barWeight,omitempty"`
 	Hundos         int `json:"hundreds,omitempty"`
 	FortyFives     int `json:"fortyFives,omitempty"`
+	FiftyFives     int `json:"fiftyFives,omitempty"`
 	ThirtyFives    int `json:"thirtyFives,omitempty"`
 	TwentyFives    int `json:"twentyFives,omitempty"`
 	Tens           int `json:"tens,omitempty"`
@@ -145,6 +154,29 @@ type RackInputStandard struct {
 
 func (a *RackInputStandard) Bind(r *http.Request) error {
 	return nil
+}
+
+func (r *RackInputStandard) DecreaseWeight(name string) {
+	switch name {
+	case "Hundos":
+		r.Hundos--
+	case "FiftyFives":
+		r.FiftyFives--
+	case "FortyFives":
+		r.FortyFives--
+	case "ThirtyFives":
+		r.ThirtyFives--
+	case "TwentyFives":
+		r.TwentyFives--
+	case "Tens":
+		r.Tens--
+	case "Fives":
+		r.Fives--
+	case "TwoDotFives":
+		r.TwoDotFives--
+	case "OneDotTwoFives":
+		r.OneDotTwoFives--
+	}
 }
 
 /* Util Functions */
