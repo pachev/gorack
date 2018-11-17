@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+//Routes function that sets up the initial Chi Router
 func Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(
@@ -48,7 +49,7 @@ func main() {
 
 	router.Route("/v1", func(r chi.Router) {
 		r.Post("/rack", RackEmPost)
-		r.Get("/rack", RackEmGet) // assumes all default values and returns
+		r.Get("/rack", RackEmGet) // assumes all default values
 	})
 
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
@@ -66,7 +67,7 @@ func main() {
 
 /* Main Logic */
 
-//RackEmPost the main function that calculates a desired weight based on some inputs
+//RackEmPost the main function that calculates a desired weight based on provided inputs
 func RackEmPost(w http.ResponseWriter, r *http.Request) {
 	render.Render(w, r, ErrInternal())
 }
@@ -93,7 +94,7 @@ func RackEmGet(w http.ResponseWriter, r *http.Request) {
 }
 
 //CalculateWeight Main logic for calculating weight based on a set of inputs
-func CalculateWeight(input *RackInputStandard, weight int64) (RackInputStandard, bool) {
+func CalculateWeight(input *RackInputStandard, weight int64) (ReturnedValueStandard, bool) {
 	//TODO: add logic for returning errors
 	rawResult := map[string]int{}
 	leftOver := int(weight) - input.BarWeight
@@ -129,11 +130,14 @@ func CalculateWeight(input *RackInputStandard, weight int64) (RackInputStandard,
 
 	er := mapstructure.Decode(rawResult, &result)
 	if er != nil {
-		return result, true
+		return ReturnedValueStandard{}, true
 	}
 	fmt.Println("achieved", achievedAmount, "required", weight)
-	fmt.Println("input", input)
-	return result, false
+	return ReturnedValueStandard{
+		RackInputStandard: &result,
+		DesiredWeight:     int(weight),
+		AchievedWeight:    achievedAmount,
+	}, false
 }
 
 /* Models */
@@ -152,31 +156,40 @@ type RackInputStandard struct {
 	OneDotTwoFives int `json:"oneDotTwoFives,omitempty"`
 }
 
+// Bind function to check for errors during a request
 func (a *RackInputStandard) Bind(r *http.Request) error {
 	return nil
 }
 
-func (r *RackInputStandard) DecreaseWeight(name string) {
+// DecreaseWeight subtracts number of available plates as they are calculated
+func (a *RackInputStandard) DecreaseWeight(name string) {
 	switch name {
 	case "Hundos":
-		r.Hundos--
+		a.Hundos--
 	case "FiftyFives":
-		r.FiftyFives--
+		a.FiftyFives--
 	case "FortyFives":
-		r.FortyFives--
+		a.FortyFives--
 	case "ThirtyFives":
-		r.ThirtyFives--
+		a.ThirtyFives--
 	case "TwentyFives":
-		r.TwentyFives--
+		a.TwentyFives--
 	case "Tens":
-		r.Tens--
+		a.Tens--
 	case "Fives":
-		r.Fives--
+		a.Fives--
 	case "TwoDotFives":
-		r.TwoDotFives--
+		a.TwoDotFives--
 	case "OneDotTwoFives":
-		r.OneDotTwoFives--
+		a.OneDotTwoFives--
 	}
+}
+
+//ReturnedValueStandard is the value that is returned to a client
+type ReturnedValueStandard struct {
+	*RackInputStandard
+	DesiredWeight  int `json:"desiredWeight"`
+	AchievedWeight int `json:"achievedWeight"`
 }
 
 /* Util Functions */
@@ -189,7 +202,6 @@ func getEnv(key, fallback string) string {
 }
 
 // ErrResponse renderer type for handling all sorts of errors.
-//
 type ErrResponse struct {
 	Err            error `json:"-"` // low-level runtime error
 	HTTPStatusCode int   `json:"-"` // http response status code
@@ -227,14 +239,12 @@ func ErrInternal() render.Renderer {
 // AssumeDefaults sets default amounts for input if none are provided
 func AssumeDefaults() RackInputStandard {
 	return RackInputStandard{
-		BarWeight:      45,
-		Hundos:         0,
-		FortyFives:     6,
-		ThirtyFives:    6,
-		TwentyFives:    6,
-		Tens:           6,
-		Fives:          6,
-		TwoDotFives:    6,
-		OneDotTwoFives: 0,
+		BarWeight:   45,
+		FortyFives:  10,
+		ThirtyFives: 10,
+		TwentyFives: 10,
+		Tens:        10,
+		Fives:       10,
+		TwoDotFives: 10,
 	}
 }

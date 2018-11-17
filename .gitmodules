@@ -1,0 +1,18 @@
+[submodule "vendor/src/github.com/go-chi/chi"]
+	path = vendor/src/github.com/go-chi/chi
+	url = https://github.com/go-chi/chi
+[submodule "vendor/src/github.com/go-chi/render"]
+	path = vendor/src/github.com/go-chi/render
+	url = https://github.com/go-chi/render
+[submodule "vendor/src/github.com/mitchellh/mapstructure"]
+	path = vendor/src/github.com/mitchellh/mapstructure
+	url = https://github.com/mitchellh/mapstructure
+[submodule "vendor/github.com/mitchellh/mapstructure"]
+	path = vendor/github.com/mitchellh/mapstructure
+	url = https://github.com/mitchellh/mapstructure
+[submodule "vendor/github.com/go-chi/render"]
+	path = vendor/github.com/go-chi/render
+	url = https://github.com/go-chi/render
+[submodule "vendor/github.com/go-chi/chi"]
+	path = vendor/github.com/go-chi/chi
+	url = https://github.com/go-chi/chi
