@@ -21,8 +21,10 @@ An example application using this API can be found [here][3]
 
 A Makefile is included with this repository. 
 ```bash
-$make 
+$ make all
 ```
+
+The command above will fetch sources and run the application on http://localhost:8080/v1
 
 TODO: Enhance README
 
