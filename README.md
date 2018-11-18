@@ -8,7 +8,7 @@ An API for calculating racking weight for barbell. The api is available here [ht
 
 An example application using this API can be found [here][3]
 
-**Featuers:**
+**Features:**
 
 * Easily Calculate needed weight for any exercise
 * Easily Define bar weight along with available plates
@@ -31,8 +31,8 @@ TODO: Enhance README
 ## License
 MIT
 
-[1]: https://goreportcard.com/report/github.com/pachev/gorack 
-[2]: https://gorack.pachevjoseph.com/v1
+[1]: https://goreportcard.com/report/github.com/pachev/gorack
+[2]: https://gorack.pachevjoseph.com/v1/rack
 [3]: Nothing
 [4]: https://gorack.pachevjoseph.com/v1/rack?weight=335
 [5]: https://golang.org/doc/install
