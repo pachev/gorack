@@ -70,7 +70,7 @@ MIT
 TODO: Enhance README
 
 [1]: https://goreportcard.com/report/github.com/pachev/gorack
-[2]: https://gorack.pachevjoseph.com/v1/rack
+[2]: https://gorack.pachevjoseph.com/v1/rack?weight=225
 [3]: Nothing
 [4]: https://gorack.pachevjoseph.com/v1/rack?weight=335
 [5]: https://golang.org/doc/install
