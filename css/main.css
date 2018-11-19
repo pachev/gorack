@@ -1,0 +1,28 @@
+html,
+body {
+    font-family: 'Open Sans', serif;
+}
+
+.hero.is-info {
+    background: linear-gradient(rgba(0, 0, 0, 0.5),
+        rgba(0, 0, 0, 0.5)), url('https://source.unsplash.com/Pnm-9vBEQhk/1200x628') no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
+
+.hero .nav,
+.hero.is-success .nav {
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+
+.hero .subtitle {
+    padding: 3rem 0;
+    line-height: 1.5;
+}
+
+.logo-img {
+    width: 7em;
+}
