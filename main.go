@@ -47,7 +47,7 @@ var WeightAmounts = map[string]float32{
 func main() {
 	router := Routes()
 
-	router.Route("/v1", func(r chi.Router) {
+	router.Route("/v1/api", func(r chi.Router) {
 		r.Post("/rack", RackEmPost)
 		r.Get("/rack", RackEmGet) // assumes all default values
 	})
