@@ -71,7 +71,7 @@ TODO: Enhance README
 
 [1]: https://goreportcard.com/report/github.com/pachev/gorack
 [2]: https://gorack.pachevjoseph.com/v1/rack?weight=225
-[3]: Nothing
+[3]: https://pachev.github.io/gorack/
 [4]: https://gorack.pachevjoseph.com/v1/rack?weight=335
 [5]: https://golang.org/doc/install
 [6]: https://opensource.org/licenses/MIT
