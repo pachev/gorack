@@ -15,6 +15,8 @@ An example application using this API can be found [here][3]
 * Sensible defaults are provided with common weights along with Olympic barbell weight (45lb)
 * Simple to use without any UI needed: [`v1/rack?weigh=335`][4] in your browser will return instant results 
 
+_Note: returned values should be considered as pairs e.g. (`fortyFives: 2` means two forty-five plates on each side)_
+
 ## Getting Started
 
 ### Installation
@@ -26,10 +28,46 @@ $ make all
 
 The command above will fetch sources and run the application on http://localhost:8080/v1
 
-TODO: Enhance README
+## Advanced Requests
+
+If you don't like the defaults provided from the `GET` call, you can make a `POST` request with the available weights 
+that you have (the application assumes inputs as pairs). 
+
+__Example: I'd like to achieve 285 lb with a standard olympic bar with limited plates:__
+```bash
+curl -X POST \
+  https://gorack.pachevjoseph.com/v1/rack \
+  -H 'content-type: application/json' \
+  -d '{
+	"fortyFives": 1,
+	"thirtyFives": 1,
+	"twentyFives": 1,
+	"tens": 1,
+	"fives": 2,
+	"twoDotFives": 1,
+	"desiredWeight": 285
+}'
+```
+
+In the request above, "barWeight" was not included as was therefore defaulted to 45lb. The returned payload with look like below (returned values are in pairs):
+
+```json
+{
+    "fortyFives": 1,
+    "thirtyFives": 1,
+    "twentyFives": 1,
+    "tens": 1,
+    "fives": 1,
+    "desiredWeight": 285,
+    "achievedWeight": 285,
+    "message": "You got this!"
+}
+```
 
 ## License
 MIT
+
+TODO: Enhance README
 
 [1]: https://goreportcard.com/report/github.com/pachev/gorack
 [2]: https://gorack.pachevjoseph.com/v1/rack

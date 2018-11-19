@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -69,38 +69,48 @@ func main() {
 
 //RackEmPost the main function that calculates a desired weight based on provided inputs
 func RackEmPost(w http.ResponseWriter, r *http.Request) {
-	render.Render(w, r, ErrInternal())
+	input := &RackInputStandard{}
+
+	if err := render.Bind(r, input); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	results, hasError := CalculateWeight(input)
+	if hasError {
+		render.Render(w, r, ErrInternal())
+		return
+	}
+	render.JSON(w, r, results)
 }
 
 //RackEmGet the main function that calculates a desired weight based on default inputs
 func RackEmGet(w http.ResponseWriter, r *http.Request) {
 	defaultWeights := AssumeDefaults()
 	weight, err := strconv.ParseInt(r.URL.Query().Get("weight"), 10, 64)
-
 	if err != nil {
 		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
-
-	results, hasError := CalculateWeight(&defaultWeights, weight)
-
+	defaultWeights.DesiredWeight = int(weight)
+	results, hasError := CalculateWeight(&defaultWeights)
 	if hasError {
 		render.Render(w, r, ErrInternal())
 		return
 	}
-
-	fmt.Println(results)
 	render.JSON(w, r, results)
 }
 
 //CalculateWeight Main logic for calculating weight based on a set of inputs
-func CalculateWeight(input *RackInputStandard, weight int64) (ReturnedValueStandard, bool) {
+func CalculateWeight(input *RackInputStandard) (ReturnedValueStandard, bool) {
 	//TODO: add logic for returning errors
 	rawResult := map[string]int{}
-	leftOver := int(weight) - input.BarWeight
+	leftOver := input.DesiredWeight - input.BarWeight
 	reflection := reflect.ValueOf(input).Elem()
 	achievedAmount := input.BarWeight
-	var result RackInputStandard
+	result := RackInputStandard{
+		DesiredWeight: input.DesiredWeight,
+	}
 
 	for leftOver > 0 {
 		found := false
@@ -109,7 +119,7 @@ func CalculateWeight(input *RackInputStandard, weight int64) (ReturnedValueStand
 			fieldName := reflection.Type().Field(i).Name
 			fieldAmount := field.Interface().(int)
 
-			if fieldName == "BarWeight" || fieldAmount == 0 {
+			if fieldName == "BarWeight" || fieldName == "DesiredWeight" || fieldAmount == 0 {
 				continue
 			}
 			amount := int(WeightAmounts[fieldName] * 2)
@@ -132,11 +142,10 @@ func CalculateWeight(input *RackInputStandard, weight int64) (ReturnedValueStand
 	if er != nil {
 		return ReturnedValueStandard{}, true
 	}
-	fmt.Println("achieved", achievedAmount, "required", weight)
 	return ReturnedValueStandard{
 		RackInputStandard: &result,
-		DesiredWeight:     int(weight),
 		AchievedWeight:    achievedAmount,
+		Message:           "You got this!",
 	}, false
 }
 
@@ -154,10 +163,18 @@ type RackInputStandard struct {
 	Fives          int `json:"fives,omitempty"`
 	TwoDotFives    int `json:"twoDotFives,omitempty"`
 	OneDotTwoFives int `json:"oneDotTwoFives,omitempty"`
+	DesiredWeight  int `json:"desiredWeight"`
 }
 
-// Bind function to check for errors during a request
+// Bind function to check for errors during unmarshalling input request
 func (a *RackInputStandard) Bind(r *http.Request) error {
+	if a.BarWeight == 0 {
+		a.BarWeight = AssumeDefaults().BarWeight
+	}
+	if a.DesiredWeight == 0 || a.DesiredWeight <= a.BarWeight {
+		return errors.New("A valid desired weight must be provided")
+	}
+
 	return nil
 }
 
@@ -188,8 +205,8 @@ func (a *RackInputStandard) DecreaseWeight(name string) {
 //ReturnedValueStandard is the value that is returned to a client
 type ReturnedValueStandard struct {
 	*RackInputStandard
-	DesiredWeight  int `json:"desiredWeight"`
-	AchievedWeight int `json:"achievedWeight"`
+	AchievedWeight int    `json:"achievedWeight"`
+	Message        string `json:"message,omitempty"`
 }
 
 /* Util Functions */
@@ -211,6 +228,7 @@ type ErrResponse struct {
 	ErrorText  string `json:"error,omitempty"` // application-level error message, for debugging
 }
 
+// Render function for rendering errors back a client
 func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 	render.Status(r, e.HTTPStatusCode)
 	return nil
