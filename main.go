@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/mitchellh/mapstructure"
 )
@@ -17,6 +18,14 @@ import (
 //Routes function that sets up the initial Chi Router
 func Routes() *chi.Mux {
 	router := chi.NewRouter()
+	cors := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders: []string{"Link"},
+		MaxAge:         300, // Maximum value not ignored by any of major browsers
+	})
+	router.Use(cors.Handler)
 	router.Use(
 		render.SetContentType(render.ContentTypeJSON),
 		middleware.Logger,          // Log API request calls

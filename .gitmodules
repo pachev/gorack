@@ -16,3 +16,6 @@
 [submodule "vendor/github.com/go-chi/chi"]
 	path = vendor/github.com/go-chi/chi
 	url = https://github.com/go-chi/chi
+[submodule "vendor/github.com/go-chi/cors"]
+	path = vendor/github.com/go-chi/cors
+	url = https://github.com/go-chi/cors
