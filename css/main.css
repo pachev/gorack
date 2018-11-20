@@ -26,3 +26,72 @@ body {
 .logo-img {
     width: 7em;
 }
+
+.media-left p {
+    padding-top: .45em;
+}
+
+.bar-type.active {
+    border-bottom: 2px solid #60af0594;
+    color: black;
+}
+
+.bar-type {
+    cursor: pointer;
+
+}
+
+.box {
+    background: rgba(255, 255, 255, 0.83) !important;
+}
+
+.desired-weight {
+    display: flex;
+    justify-content: center;
+    padding: 1em 0;
+}
+
+.plate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px;
+}
+
+.plate span {
+    color: #3273dc;
+}
+
+.avail-plates {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+}
+
+.calculate-button {
+    padding-top: 2em;
+}
+
+.has-error {
+    color: red;
+    text-align: center;
+}
+
+.not-achieved {
+    text-align: center;
+    padding-top: 1em;
+}
+
+.success-message {
+    color: #3273dc;
+    padding: 2px 0;
+}
+
+.plate.selected img {
+    border-radius: 50%;
+    border: 2px solid #3273dc;
+}
+
+[v-cloak] {
+    display: none;
+}

@@ -6,66 +6,156 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Go Rack Preview</title>
+
+    <!-- Google fonts because they run the internet :/ -->
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700" rel="stylesheet">
+
+    <!-- Font Awesome for 2 icons ;) -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU"
         crossorigin="anonymous">
+
     <!-- Bulma Version 0.7.2-->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css" />
+
+    <!-- Main Custom CSS -->
     <link rel="stylesheet" type="text/css" href="./css/main.css">
+
+    <!-- Axisos for requests -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+
 </head>
 
 <body>
-    <section class="hero is-info is-fullheight">
-        <div class="hero-head">
-            <nav class="navbar">
-                <div class="container">
-                    <div class="navbar-brand">
-                        <a class="navbar-item" href="/">
-                            <img class="logo-img" src="./GORACK.svg" alt="Logo">
-                        </a>
-                        <span class="navbar-burger burger" data-target="navbarMenu">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </span>
-                    </div>
-                    <div id="navbarMenu" class="navbar-menu">
-                        <div class="navbar-end">
-                            <span class="navbar-item">
-                                <a class="button is-white is-outlined" href="#">
-                                    <span class="icon">
-                                        <i class="fa fa-book"></i>
-                                    </span>
-                                    <span>Documentation</span>
+    <div id="app">
+        <div v-cloak>
+            <section class="hero is-info is-fullheight">
+                <div class="hero-head">
+                    <nav class="navbar">
+                        <div class="container">
+                            <div class="navbar-brand">
+                                <a class="navbar-item" href="">
+                                    <img class="logo-img" src="./GORACK.svg" alt="Logo">
                                 </a>
-                            </span>
-                            <span class="navbar-item">
-                                <a class="button is-white is-outlined" href="https://github.com/pachev/gorack">
-                                    <span class="icon">
-                                        <i class="fa fa-github"></i>
+                                <span class="navbar-burger burger" data-target="navbarMenu">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
+                            </div>
+                            <div id="navbarMenu" class="navbar-menu">
+                                <div class="navbar-end">
+                                    <span class="navbar-item">
+                                        <a class="button is-white is-outlined" href="#">
+                                            <span class="icon">
+                                                <i class="fa fa-book"></i>
+                                            </span>
+                                            <span>Documentation</span>
+                                        </a>
                                     </span>
-                                    <span>View Source</span>
-                                </a>
-                            </span>
+                                    <span class="navbar-item">
+                                        <a class="button is-white is-outlined" href="https://github.com/pachev/gorack">
+                                            <span class="icon">
+                                                <i class="fa fa-github"></i>
+                                            </span>
+                                            <span>View Source</span>
+                                        </a>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+
+                <div class="hero-body">
+                    <div class="container has-text-centered">
+                        <div class="column is-6 is-offset-3">
+                            <div class="desired-weight">
+                                <div class="control">
+                                    <input class="input" type="number" placeholder="Desired Weight" v-model.number="desiredWeight"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="box">
+                                <article class="media">
+                                    <div class="media-left">
+                                        <p>
+                                            <strong>Bar Type:</strong>
+                                        </p>
+                                        <p>
+                                            <span v-on:click="selectBar('olympicBar')" class="bar-type" v-bind:class="{ active: barSelect=='olympicBar'}">
+                                                Olympic Bar (45 lb)
+                                            </span>
+                                        </p>
+                                        <p>
+                                            <span v-on:click="selectBar('shortBar')" class="bar-type" v-bind:class="{ active: barSelect=='shortBar'}">
+                                                Short Bar (35 lb)
+                                            </span>
+                                        </p>
+                                        <p>
+                                            <span v-on:click="selectBar('ezBar')" class="bar-type" v-bind:class="{ active: barSelect=='ezBar'}">
+                                                EZ-Bar (25 lb)
+                                            </span>
+                                        </p>
+                                    </div>
+
+                                    <div class="media-content">
+                                        <div class="content">
+                                            <p class="has-text-centered">
+                                                <strong>Plates Per Side:</strong>
+                                            </p>
+                                            <div class="avail-plates">
+                                                <div class="plate" v-bind:class="{ selected: results.fortyFives }">
+                                                    <img src="img/45.svg">
+                                                    <span v-if="results.fortyFives">x{{results.fortyFives}}</span>
+                                                </div>
+                                                <div class="plate 35" v-bind:class="{ selected: results.thirtyFives }">
+                                                    <img src="img/35.svg" alt="">
+                                                    <span v-if="results.thirtyFives">x{{results.thirtyFives}}</span>
+                                                </div>
+                                                <div class="plate 25" v-bind:class="{ selected: results.twentyFives }">
+                                                    <img src="img/25.svg" alt="">
+                                                    <span v-if="results.twentyFives">x{{results.twentyFives}}</span>
+                                                </div>
+                                                <div class="plate 10" v-bind:class="{ selected: results.tens }">
+                                                    <img src="img/10.svg" alt="">
+                                                    <span v-if="results.tens">x{{results.tens}}</span>
+                                                </div>
+                                                <div class="plate 05" v-bind:class="{ selected: results.fives }">
+                                                    <img src="img/05.svg" alt="">
+                                                    <span v-if="results.fives">x{{results.fives}}</span>
+                                                </div>
+                                                <div class="plate 2-5" v-bind:class="{ selected: results.twoDotFives }">
+                                                    <img src="img/2-5.svg" alt="">
+                                                    <span v-if="results.twoDotFives">x{{results.twoDotFives}}</span>
+                                                </div>
+                                            </div>
+                                            <div class="not-achieved" v-if="results.desiredWeight != results.achievedWeight">
+                                                <div>Desired Weight: {{results.desiredWeight}}</div>
+                                                <div>Achieved Weight: {{results.achievedWeight}}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                                <div class="calculate-button">
+                                    <div class="success-message">
+                                        {{results.message}}
+                                    </div>
+                                    <button class="button is-primary is-fullwidth" v-bind:disabled="desiredWeight < 0"
+                                        v-on:click="calculateWeight()">
+                                        Calculate
+                                    </button>
+                                    <div class="has-error" v-if="hasError">Sorry, An error occured :/ </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </nav>
+            </section>
         </div>
-
-        <div class="hero-body">
-            <div class="container has-text-centered">
-                <div class="column is-6 is-offset-3">
-                    <h1 class="title">
-                        Coming Soon
-                    </h1>
-                    <h2 class="subtitle">
-                        Currently working on a preview for this.
-                    </h2>
-                </div>
-            </div>
-        </div>
-    </section>
+    </div>
+    <!-- VueJS :heart: -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.min.js"></script>
+    <script src="js/main.js"></script>
 </body>
 
 </html>
