@@ -20,11 +20,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -33,8 +36,58 @@ import (
 	"github.com/mitchellh/mapstructure"
 
    httpSwagger "github.com/swaggo/http-swagger/v2"
-   _ "github.com/pachev/gorack/docs" // This will be auto-generated
+   _ "github.com/pachev/gorack/docs"
 )
+
+// WeightCache provides in-memory caching for weight calculations
+type WeightCache struct {
+	cache map[string]*ReturnedValueStandard
+	mu    sync.RWMutex
+	ttl   time.Duration
+}
+
+// NewWeightCache creates a new cache with the specified TTL
+func NewWeightCache(ttl time.Duration) *WeightCache {
+	return &WeightCache{
+		cache: make(map[string]*ReturnedValueStandard),
+		ttl:   ttl,
+	}
+}
+
+// Get retrieves a cached result if it exists
+func (wc *WeightCache) Get(key string) (*ReturnedValueStandard, bool) {
+	wc.mu.RLock()
+	defer wc.mu.RUnlock()
+	result, found := wc.cache[key]
+	return result, found
+}
+
+// Set stores a calculation result in the cache
+func (wc *WeightCache) Set(key string, value *ReturnedValueStandard) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	wc.cache[key] = value
+	
+	// Set up automatic expiration if TTL is positive
+	if wc.ttl > 0 {
+		go func(k string) {
+			time.Sleep(wc.ttl)
+			wc.mu.Lock()
+			delete(wc.cache, k)
+			wc.mu.Unlock()
+		}(key)
+	}
+}
+
+// Clear empties the cache
+func (wc *WeightCache) Clear() {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	wc.cache = make(map[string]*ReturnedValueStandard)
+}
+
+// Global cache instance
+var weightCache *WeightCache
 
 // Routes function that sets up the initial Chi Router
 func Routes() *chi.Mux {
@@ -57,6 +110,11 @@ func Routes() *chi.Mux {
 		middleware.RequestID,
 	)
 
+	// Health check endpoints
+	router.Get("/health", HealthCheck)
+	router.Get("/status", HealthCheck)
+	router.Get("/", HealthCheck)
+	
 	router.Get("/docs/*", httpSwagger.Handler())
 	return router
 }
@@ -74,6 +132,10 @@ var WeightAmounts = map[string]float32{
 }
 
 func main() {
+	// Initialize cache with TTL from environment or 1 hour if not set
+	cacheTTL := getEnvDuration("CACHE_TTL", 1*time.Hour)
+	weightCache = NewWeightCache(cacheTTL)
+	
 	router := Routes()
 
 	router.Route("/v1/api", func(r chi.Router) {
@@ -95,6 +157,7 @@ func main() {
 }
 
 
+
 // RackEmPost godoc
 // @Summary      Calculate plates with custom plate availability
 // @Description  Returns an optimal plate configuration for a given target weight with custom available plates
@@ -114,12 +177,26 @@ func RackEmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate cache key for this specific input
+	cacheKey := generateCacheKey(input)
+	
+	// Check cache first
+	if cachedResult, found := weightCache.Get(cacheKey); found {
+		render.JSON(w, r, cachedResult)
+		return
+	}
+
+	// Cache miss, calculate and store
 	results, err := CalculateWeight(input)
 	if err != nil {
 		log.Printf("Error calculating weight for POST: %v\nInput: %+v\n", err, input)
 		render.Render(w, r, ErrInternal())
 		return
 	}
+	
+	// Store in cache
+	weightCache.Set(cacheKey, results)
+	
 	render.JSON(w, r, results)
 }
 
@@ -158,6 +235,12 @@ func RackEmGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check cache for GET request with standard plates
+	cacheKey := fmt.Sprintf("get:%d", inputWithDefaults.DesiredWeight)
+	if cachedResult, found := weightCache.Get(cacheKey); found {
+		render.JSON(w, r, cachedResult)
+		return
+	}
 
 	results, calcErr := CalculateWeight(&inputWithDefaults)
 	if calcErr != nil {
@@ -165,7 +248,27 @@ func RackEmGet(w http.ResponseWriter, r *http.Request) {
 		render.Render(w, r, ErrInternal())
 		return
 	}
+	
+	// Store in cache
+	weightCache.Set(cacheKey, results)
+	
 	render.JSON(w, r, results)
+}
+
+// generateCacheKey creates a unique key for caching based on input parameters
+func generateCacheKey(input *RackInputStandard) string {
+	return fmt.Sprintf("post:bar=%d:desired=%d:h=%d:45=%d:35=%d:25=%d:10=%d:5=%d:2.5=%d:1.25=%d",
+		input.BarWeight,
+		input.DesiredWeight,
+		input.Hundos,
+		input.FortyFives,
+		input.ThirtyFives,
+		input.TwentyFives,
+		input.Tens,
+		input.Fives,
+		input.TwoDotFives,
+		input.OneDotTwoFives,
+	)
 }
 
 // CalculateWeight is the core logic for calculating plates needed.
@@ -324,12 +427,40 @@ type ReturnedValueStandard struct {
 	Message            string `json:"message,omitempty"`
 }
 
+// HealthCheck godoc
+// @Summary      Health check endpoint
+// @Description  Returns status of the API server
+// @Tags         Health
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Router       /health [get]
+// @Router       /status [get]
+// @Router       /v1/api/health [get]
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	status := map[string]string{
+		"status":  "ok",
+		"service": "gorack-api",
+		"version": "1.0",
+	}
+	render.JSON(w, r, status)
+}
+
 /* Util Functions */
 
 // getEnv retrieves an environment variable or returns a fallback value.
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
+	}
+	return fallback
+}
+
+// getEnvDuration retrieves a time.Duration environment variable or returns a fallback value.
+func getEnvDuration(key string, fallback time.Duration) time.Duration {
+	if value, ok := os.LookupEnv(key); ok {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
 	}
 	return fallback
 }

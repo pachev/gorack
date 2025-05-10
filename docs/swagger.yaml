@@ -80,6 +80,21 @@ info:
   title: Gorack API
   version: "1.0"
 paths:
+  /health:
+    get:
+      description: Returns status of the API server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - Health
   /rack:
     get:
       consumes:
@@ -139,6 +154,36 @@ paths:
       summary: Calculate plates with custom plate availability
       tags:
       - Rack
+  /status:
+    get:
+      description: Returns status of the API server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - Health
+  /v1/api/health:
+    get:
+      description: Returns status of the API server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - Health
 swagger: "2.0"
 tags:
 - description: Operations for calculating barbell weight plates
