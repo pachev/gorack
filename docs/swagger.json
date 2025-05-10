@@ -1,0 +1,215 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A simple API for calculating barbell weight plates.",
+        "title": "Gorack API",
+        "termsOfService": "http://example.com/terms/",
+        "contact": {
+            "name": "Your Name",
+            "url": "http://www.github.com/pachev",
+            "email": "your.email@example.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/v1/api",
+    "paths": {
+        "/rack": {
+            "get": {
+                "description": "Returns an optimal plate configuration for a given target weight",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rack"
+                ],
+                "summary": "Calculate plates using default plate availability",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Desired weight in pounds",
+                        "name": "weight",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ReturnedValueStandard"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Returns an optimal plate configuration for a given target weight with custom available plates",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rack"
+                ],
+                "summary": "Calculate plates with custom plate availability",
+                "parameters": [
+                    {
+                        "description": "Desired weight and available plates",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RackInputStandard"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ReturnedValueStandard"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.ErrResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Application-specific error code",
+                    "type": "integer"
+                },
+                "error": {
+                    "description": "Application-level error message for debugging",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "User-level status message",
+                    "type": "string"
+                }
+            }
+        },
+        "main.RackInputStandard": {
+            "type": "object",
+            "properties": {
+                "barWeight": {
+                    "type": "integer"
+                },
+                "desiredWeight": {
+                    "description": "Required in input",
+                    "type": "integer"
+                },
+                "fives": {
+                    "type": "integer"
+                },
+                "fortyFives": {
+                    "type": "integer"
+                },
+                "hundreds": {
+                    "description": "JSON tag \"hundreds\" for API compatibility",
+                    "type": "integer"
+                },
+                "oneDotTwoFives": {
+                    "type": "integer"
+                },
+                "tens": {
+                    "type": "integer"
+                },
+                "thirtyFives": {
+                    "type": "integer"
+                },
+                "twentyFives": {
+                    "type": "integer"
+                },
+                "twoDotFives": {
+                    "type": "integer"
+                }
+            }
+        },
+        "main.ReturnedValueStandard": {
+            "type": "object",
+            "properties": {
+                "achievedWeight": {
+                    "type": "integer"
+                },
+                "barWeight": {
+                    "type": "integer"
+                },
+                "desiredWeight": {
+                    "description": "Required in input",
+                    "type": "integer"
+                },
+                "fives": {
+                    "type": "integer"
+                },
+                "fortyFives": {
+                    "type": "integer"
+                },
+                "hundreds": {
+                    "description": "JSON tag \"hundreds\" for API compatibility",
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "oneDotTwoFives": {
+                    "type": "integer"
+                },
+                "tens": {
+                    "type": "integer"
+                },
+                "thirtyFives": {
+                    "type": "integer"
+                },
+                "twentyFives": {
+                    "type": "integer"
+                },
+                "twoDotFives": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "description": "Operations for calculating barbell weight plates",
+            "name": "Rack"
+        }
+    ]
+}

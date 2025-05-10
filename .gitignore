@@ -16,3 +16,4 @@ gorack
 bin/
 vendor/src
 public/
+tmp/

@@ -1,0 +1,30 @@
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Command to run when air starts
+cmd = "go build -o ./tmp/gorack ."
+# Binary file produced by cmd
+bin = "./tmp/gorack"
+# Watch these directories for changes
+include_ext = ["go", "mod", "sum"]
+# Exclude these directories
+exclude_dir = ["tmp"]
+# Log file
+log = "air-build.log"
+# Delay after each execution
+delay = 1000 # ms
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[log]
+time = true
+
+[misc]
+# Allow air to clean up old binary files
+clean_on_exit = true

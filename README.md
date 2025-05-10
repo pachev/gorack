@@ -1,77 +1,163 @@
 # Gorack
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/pachev/gorack)][1]
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)][6]
+[![Go Report Card](https://goreportcard.com/badge/github.com/pachev/gorack)](https://goreportcard.com/report/github.com/pachev/gorack)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+A Go API for calculating optimal weight plate combinations for barbell exercises. Available at [https://gorack.pachevjoseph.com/v1/api](https://gorack.pachevjoseph.com/v1/api)
 
-An API for calculating racking weight for barbell. The api is available here [https://gorack.pachevjoseph.com/v1/api][2]
+Try the web interface at [https://pachev.github.io/gorack/](https://pachev.github.io/gorack/)
 
-An example application using this API can be found [here][3]
+## Features
 
-**Features:**
+* Calculate optimal plate combinations for any desired barbell weight
+* Customize bar weight and available plates
+* Get sensible defaults with common weights and standard Olympic barbell (45lb)
+* Quick REST API access: [`/v1/api/rack?weight=335`](https://gorack.pachevjoseph.com/v1/api/rack?weight=335) returns instant results
+* Smart optimization algorithm for finding the best plate combinations
 
-* Easily Calculate needed weight for any exercise
-* Easily Define bar weight along with available plates
-* Sensible defaults are provided with common weights along with Olympic barbell weight (45lb)
-* Simple to use without any UI needed: [`v1/api/rack?weigh=335`][4] in your browser will return instant results 
-
-_Note: returned values should be considered as pairs e.g. (`fortyFives: 2` means two forty-five plates on each side)_
+> **Note**: All plate values in responses represent **pairs** (e.g., `"fortyFives": 2` means two 45lb plates on **each side** of the barbell)
 
 ## Getting Started
 
+### Prerequisites
+
+* Go 1.22 or later
+* [mise](https://github.com/jdx/mise) (optional but recommended for development)
+
 ### Installation
 
-A Makefile is included with this repository. 
+#### Using mise (recommended)
+
+The project includes a `mise.toml` configuration file for easy setup:
+
 ```bash
-$ make all
+# Install dependencies and tools defined in mise.toml
+mise install
+
+# Build the project
+mise run build
+
+# Run the server
+mise run run
 ```
 
-The command above will fetch sources and run the application on http://localhost:8080/v1/api
+#### Manual installation
 
-## Advanced Requests
+```bash
+# Get dependencies
+go mod tidy
 
-If you don't like the defaults provided from the `GET` call, you can make a `POST` request with the available weights 
-that you have (the application assumes inputs as pairs). 
+# Build the binary
+go build -o ./tmp/gorack .
 
-__Example: I'd like to achieve 285 lb with a standard olympic bar with limited plates:__
+# Run the server
+./tmp/gorack
+```
+
+The API will be available at http://localhost:8080/v1/api
+
+### Environment Variables
+
+* `API_PORT`: Set custom port (default: 8080)
+  ```bash
+  API_PORT=9000 mise run run
+  ```
+
+## API Usage
+
+### Simple GET Request
+
+For quick calculations with default plate availability:
+
+```
+GET /v1/api/rack?weight=225
+```
+
+Response:
+```json
+{
+  "barWeight": 45,
+  "fortyFives": 2,
+  "desiredWeight": 225,
+  "achievedWeight": 225,
+  "message": "You got this!"
+}
+```
+
+### Customized POST Request
+
+For calculating with specific plate availability:
+
 ```bash
 curl -X POST \
   https://gorack.pachevjoseph.com/v1/api/rack \
   -H 'content-type: application/json' \
   -d '{
-	"fortyFives": 1,
-	"thirtyFives": 1,
-	"twentyFives": 1,
-	"tens": 1,
-	"fives": 2,
-	"twoDotFives": 1,
-	"desiredWeight": 285
+    "barWeight": 35,
+    "fortyFives": 1,
+    "thirtyFives": 2,
+    "twentyFives": 2,
+    "tens": 3,
+    "fives": 2,
+    "twoDotFives": 2,
+    "desiredWeight": 255
 }'
 ```
 
-In the request above, "barWeight" was not included as was therefore defaulted to 45lb. The returned payload with look like below (returned values are in pairs):
-
+Response:
 ```json
 {
-    "fortyFives": 1,
-    "thirtyFives": 1,
-    "twentyFives": 1,
-    "tens": 1,
-    "fives": 1,
-    "desiredWeight": 285,
-    "achievedWeight": 285,
-    "message": "You got this!"
+  "barWeight": 35,
+  "fortyFives": 1,
+  "thirtyFives": 1,
+  "twentyFives": 1,
+  "tens": 1,
+  "fives": 1,
+  "desiredWeight": 255,
+  "achievedWeight": 255,
+  "message": "You got this!"
 }
 ```
 
+## Available Plate Types
+
+The API supports the following plate types (values represent pairs):
+
+| JSON Parameter | Weight (lbs per plate) | Description |
+|----------------|------------------------|-------------|
+| `hundreds` | 100 | 100lb plates |
+| `fortyFives` | 45 | 45lb plates |
+| `thirtyFives` | 35 | 35lb plates |
+| `twentyFives` | 25 | 25lb plates |
+| `tens` | 10 | 10lb plates |
+| `fives` | 5 | 5lb plates |
+| `twoDotFives` | 2.5 | 2.5lb plates |
+| `oneDotTwoFives` | 1.25 | 1.25lb plates |
+
+## Development
+
+The project uses mise for streamlined development workflows:
+
+```bash
+# Live reload during development
+mise run watch
+
+# Run Go mod tidy
+mise run tidy
+
+# Clean build artifacts
+mise run clean
+```
+
+## How It Works
+
+Gorack uses a greedy algorithm to calculate the optimal plate combination:
+
+1. Start with the heaviest available plate
+2. Add pairs of plates to the bar, always selecting the heaviest available option
+3. Continue until reaching the desired weight or running out of suitable plates
+4. Return the achieved weight and plate configuration
+
 ## License
+
 MIT
-
-TODO: Enhance README
-
-[1]: https://goreportcard.com/report/github.com/pachev/gorack
-[2]: https://gorack.pachevjoseph.com/v1/api/rack
-[3]: https://pachev.github.io/gorack/
-[4]: https://gorack.pachevjoseph.com/v1/api/rack?weight=335
-[5]: https://golang.org/doc/install
-[6]: https://opensource.org/licenses/MIT

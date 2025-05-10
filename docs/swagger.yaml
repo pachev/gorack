@@ -1,0 +1,145 @@
+basePath: /v1/api
+definitions:
+  main.ErrResponse:
+    properties:
+      code:
+        description: Application-specific error code
+        type: integer
+      error:
+        description: Application-level error message for debugging
+        type: string
+      status:
+        description: User-level status message
+        type: string
+    type: object
+  main.RackInputStandard:
+    properties:
+      barWeight:
+        type: integer
+      desiredWeight:
+        description: Required in input
+        type: integer
+      fives:
+        type: integer
+      fortyFives:
+        type: integer
+      hundreds:
+        description: JSON tag "hundreds" for API compatibility
+        type: integer
+      oneDotTwoFives:
+        type: integer
+      tens:
+        type: integer
+      thirtyFives:
+        type: integer
+      twentyFives:
+        type: integer
+      twoDotFives:
+        type: integer
+    type: object
+  main.ReturnedValueStandard:
+    properties:
+      achievedWeight:
+        type: integer
+      barWeight:
+        type: integer
+      desiredWeight:
+        description: Required in input
+        type: integer
+      fives:
+        type: integer
+      fortyFives:
+        type: integer
+      hundreds:
+        description: JSON tag "hundreds" for API compatibility
+        type: integer
+      message:
+        type: string
+      oneDotTwoFives:
+        type: integer
+      tens:
+        type: integer
+      thirtyFives:
+        type: integer
+      twentyFives:
+        type: integer
+      twoDotFives:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: your.email@example.com
+    name: Your Name
+    url: http://www.github.com/pachev
+  description: A simple API for calculating barbell weight plates.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://example.com/terms/
+  title: Gorack API
+  version: "1.0"
+paths:
+  /rack:
+    get:
+      consumes:
+      - application/json
+      description: Returns an optimal plate configuration for a given target weight
+      parameters:
+      - description: Desired weight in pounds
+        in: query
+        name: weight
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ReturnedValueStandard'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrResponse'
+      summary: Calculate plates using default plate availability
+      tags:
+      - Rack
+    post:
+      consumes:
+      - application/json
+      description: Returns an optimal plate configuration for a given target weight
+        with custom available plates
+      parameters:
+      - description: Desired weight and available plates
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RackInputStandard'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ReturnedValueStandard'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrResponse'
+      summary: Calculate plates with custom plate availability
+      tags:
+      - Rack
+swagger: "2.0"
+tags:
+- description: Operations for calculating barbell weight plates
+  name: Rack

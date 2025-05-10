@@ -1,3 +1,21 @@
+// @title           Gorack API
+// @version         1.0
+// @description     A simple API for calculating barbell weight plates.
+// @termsOfService  http://example.com/terms/
+
+// @contact.name   Your Name
+// @contact.url    http://www.github.com/pachev
+// @contact.email  your.email@example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /v1/api
+
+// @tag.name Rack
+// @tag.description Operations for calculating barbell weight plates
+
 package main
 
 import (
@@ -8,40 +26,42 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/mitchellh/mapstructure"
+
+   httpSwagger "github.com/swaggo/http-swagger/v2"
+   _ "github.com/pachev/gorack/docs" // This will be auto-generated
 )
 
-//Routes function that sets up the initial Chi Router
+// Routes function that sets up the initial Chi Router
 func Routes() *chi.Mux {
 	router := chi.NewRouter()
-	cors := cors.New(cors.Options{
+
+	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders: []string{"Link"},
 		MaxAge:         300, // Maximum value not ignored by any of major browsers
 	})
-	router.Use(cors.Handler)
+
+	router.Use(corsMiddleware.Handler)
 	router.Use(
 		render.SetContentType(render.ContentTypeJSON),
-		middleware.Logger,          // Log API request calls
-		middleware.DefaultCompress, // Compress results, mostly gzipping assets and json
-		middleware.RedirectSlashes, // Redirect slashes to no slash URL versions
-		middleware.Recoverer,       // Recover from panics without crashing server
+		middleware.Logger,
+		middleware.RedirectSlashes,
+		middleware.Recoverer,
 		middleware.RequestID,
-		middleware.URLFormat,
 	)
+
+	router.Get("/docs/*", httpSwagger.Handler())
 	return router
 }
 
-// DefaultWeights to use for calculations when none are given
-var DefaultWeights = AssumeDefaults()
-
-// WeightAmounts is a translation for keynames in amounts
+// WeightAmounts is a translation for keynames in amounts (weight per single plate)
 var WeightAmounts = map[string]float32{
 	"Hundos":         100,
 	"FortyFives":     45,
@@ -58,25 +78,34 @@ func main() {
 
 	router.Route("/v1/api", func(r chi.Router) {
 		r.Post("/rack", RackEmPost)
-		r.Get("/rack", RackEmGet) // assumes all default values
+		r.Get("/rack", RackEmGet)
 	})
 
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		log.Printf("%s %s\n", method, route) // Walk and print out all routes
+		log.Printf("%s %s\n", method, route)
 		return nil
 	}
 	if err := chi.Walk(router, walkFunc); err != nil {
-		log.Panicf("Logging err: %s\n", err.Error()) // panic if there is an error
+		log.Panicf("Logging err: %s\n", err.Error())
 	}
 
 	port := getEnv("API_PORT", "8080")
-
-	log.Fatal(http.ListenAndServe(":"+port, router)) // Note, the port is usually gotten from the environment.
+	log.Printf("Starting server on :%s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
-/* Main Logic */
 
-//RackEmPost the main function that calculates a desired weight based on provided inputs
+// RackEmPost godoc
+// @Summary      Calculate plates with custom plate availability
+// @Description  Returns an optimal plate configuration for a given target weight with custom available plates
+// @Tags         Rack
+// @Accept       json
+// @Produce      json
+// @Param        request    body     RackInputStandard  true  "Desired weight and available plates"
+// @Success      200  {object}  ReturnedValueStandard
+// @Failure      400  {object}  ErrResponse
+// @Failure      500  {object}  ErrResponse
+// @Router       /rack [post]
 func RackEmPost(w http.ResponseWriter, r *http.Request) {
 	input := &RackInputStandard{}
 
@@ -85,141 +114,219 @@ func RackEmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, hasError := CalculateWeight(input)
-	if hasError {
-		render.Render(w, r, ErrInternal())
-		return
-	}
-	render.JSON(w, r, results)
-}
-
-//RackEmGet the main function that calculates a desired weight based on default inputs
-func RackEmGet(w http.ResponseWriter, r *http.Request) {
-	defaultWeights := AssumeDefaults()
-	weight, err := strconv.ParseInt(r.URL.Query().Get("weight"), 10, 64)
+	results, err := CalculateWeight(input)
 	if err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
-		return
-	}
-	defaultWeights.DesiredWeight = int(weight)
-	results, hasError := CalculateWeight(&defaultWeights)
-	if hasError {
+		log.Printf("Error calculating weight for POST: %v\nInput: %+v\n", err, input)
 		render.Render(w, r, ErrInternal())
 		return
 	}
 	render.JSON(w, r, results)
 }
 
-//CalculateWeight Main logic for calculating weight based on a set of inputs
-func CalculateWeight(input *RackInputStandard) (ReturnedValueStandard, bool) {
-	//TODO: add logic for returning errors
-	rawResult := map[string]int{}
-	leftOver := input.DesiredWeight - input.BarWeight
-	reflection := reflect.ValueOf(input).Elem()
-	achievedAmount := input.BarWeight
-	result := RackInputStandard{
-		DesiredWeight: input.DesiredWeight,
+// RackEmGet godoc
+// @Summary      Calculate plates using default plate availability
+// @Description  Returns an optimal plate configuration for a given target weight
+// @Tags         Rack
+// @Accept       json
+// @Produce      json
+// @Param        weight    query     int  true  "Desired weight in pounds"
+// @Success      200  {object}  ReturnedValueStandard
+// @Failure      400  {object}  ErrResponse
+// @Failure      500  {object}  ErrResponse
+// @Router       /rack [get]
+func RackEmGet(w http.ResponseWriter, r *http.Request) {
+	inputWithDefaults := AssumeDefaults()
+	weightStr := r.URL.Query().Get("weight")
+	if weightStr == "" {
+		render.Render(w, r, ErrInvalidRequest(errors.New("query parameter 'weight' is required")))
+		return
+	}
+	weight, err := strconv.ParseInt(weightStr, 10, 64)
+	if err != nil {
+		render.Render(w, r, ErrInvalidRequest(errors.New("invalid 'weight' parameter: must be an integer")))
+		return
+	}
+	if int(weight) <= 0 {
+		render.Render(w, r, ErrInvalidRequest(errors.New("'weight' must be a positive integer")))
+		return
+	}
+	inputWithDefaults.DesiredWeight = int(weight)
+
+	// Validate DesiredWeight against BarWeight for GET requests
+	if inputWithDefaults.DesiredWeight <= inputWithDefaults.BarWeight {
+		render.Render(w, r, ErrInvalidRequest(errors.New("desired weight must be greater than bar weight")))
+		return
+	}
+
+
+	results, calcErr := CalculateWeight(&inputWithDefaults)
+	if calcErr != nil {
+		log.Printf("Error calculating weight for GET: %v\nInput: %+v\n", calcErr, inputWithDefaults)
+		render.Render(w, r, ErrInternal())
+		return
+	}
+	render.JSON(w, r, results)
+}
+
+// CalculateWeight is the core logic for calculating plates needed.
+// Input represents available plates. Output represents plates to use.
+func CalculateWeight(inputAvailablePlates *RackInputStandard) (*ReturnedValueStandard, error) {
+	platesToUse := map[string]int{} // Stores count of each plate type (pair) to load
+	currentBarWeight := inputAvailablePlates.BarWeight
+	if currentBarWeight < 0 { // Ensure bar weight is not negative
+	    currentBarWeight = 0
+    }
+	
+	leftOver := inputAvailablePlates.DesiredWeight - currentBarWeight
+	achievedWeight := currentBarWeight
+
+	// Create a mutable copy of the input available plates for deduction during calculation
+	currentAvailablePlates := *inputAvailablePlates
+
+	// Define order of plates to try, from heaviest to lightest.
+	orderedPlateNames := []string{
+		"Hundos", "FortyFives", "ThirtyFives", "TwentyFives",
+		"Tens", "Fives", "TwoDotFives", "OneDotTwoFives",
 	}
 
 	for leftOver > 0 {
-		found := false
-		for i := 0; i < reflection.NumField(); i++ {
-			field := reflection.Field(i)
-			fieldName := reflection.Type().Field(i).Name
-			fieldAmount := field.Interface().(int)
+		foundPlateInIteration := false
+		for _, plateName := range orderedPlateNames {
+			
+			var plateAvailableCount int
+			val := reflect.ValueOf(&currentAvailablePlates).Elem()
+			fieldVal := val.FieldByName(plateName)
+			if fieldVal.IsValid() {
+				plateAvailableCount = int(fieldVal.Int())
+			} else {
+				// This should not happen if orderedPlateNames matches RackInputStandard fields
+				return nil, errors.New("internal error: plate name mismatch: " + plateName)
+			}
 
-			if fieldName == "BarWeight" || fieldName == "DesiredWeight" || fieldAmount == 0 {
+
+			if plateAvailableCount == 0 {
 				continue
 			}
-			amount := int(WeightAmounts[fieldName] * 2)
 
-			if amount <= leftOver {
-				leftOver -= amount
-				rawResult[fieldName]++
-				achievedAmount += amount
-				input.DecreaseWeight(fieldName)
-				found = true
-				break
+			plateWeightPerSingle, ok := WeightAmounts[plateName]
+			if !ok {
+				return nil, errors.New("internal error: weight definition missing for " + plateName)
+			}
+			weightOfPair := int(plateWeightPerSingle * 2)
+
+			if weightOfPair > 0 && weightOfPair <= leftOver {
+				leftOver -= weightOfPair
+				platesToUse[plateName]++
+				achievedWeight += weightOfPair
+				currentAvailablePlates.DecreaseWeight(plateName)
+				foundPlateInIteration = true
+				break // Greedily take the heaviest possible, then restart outer loop for next heaviest
 			}
 		}
-		if !found {
-			break
+		if !foundPlateInIteration {
+			break // No suitable plate could be added in this pass
 		}
 	}
 
-	er := mapstructure.Decode(rawResult, &result)
-	if er != nil {
-		return ReturnedValueStandard{}, true
+	// Prepare the output struct containing plates to use
+	outputPlates := RackInputStandard{
+		BarWeight:     currentBarWeight,
+		DesiredWeight: inputAvailablePlates.DesiredWeight,
 	}
-	return ReturnedValueStandard{
-		RackInputStandard: &result,
-		AchievedWeight:    achievedAmount,
+	// Populate outputPlates with the counts from platesToUse map
+	decoderConfig := &mapstructure.DecoderConfig{
+		Result:   &outputPlates,
+		TagName:  "json",
+		Squash:   true,
+	}
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+	    log.Printf("Error creating mapstructure decoder: %v", err)
+		return nil, errors.New("internal error creating decoder")
+	}
+	if err := decoder.Decode(platesToUse); err != nil {
+	    log.Printf("Error decoding plates map to struct: %v", err)
+		return nil, errors.New("internal error decoding result")
+	}
+
+
+	return &ReturnedValueStandard{
+		RackInputStandard: &outputPlates,
+		AchievedWeight:    achievedWeight,
 		Message:           "You got this!",
-	}, false
+	}, nil
 }
 
 /* Models */
 
-// RackInputStandard is an Input to be used in calculations
+// RackInputStandard defines the structure for API input (available plates)
+// and also for the plates to be used in the output.
+// Plate counts are number of PAIRS.
 type RackInputStandard struct {
 	BarWeight      int `json:"barWeight,omitempty"`
-	Hundos         int `json:"hundreds,omitempty"`
+	Hundos         int `json:"hundreds,omitempty"` // JSON tag "hundreds" for API compatibility
 	FortyFives     int `json:"fortyFives,omitempty"`
-	FiftyFives     int `json:"fiftyFives,omitempty"`
 	ThirtyFives    int `json:"thirtyFives,omitempty"`
 	TwentyFives    int `json:"twentyFives,omitempty"`
 	Tens           int `json:"tens,omitempty"`
 	Fives          int `json:"fives,omitempty"`
 	TwoDotFives    int `json:"twoDotFives,omitempty"`
 	OneDotTwoFives int `json:"oneDotTwoFives,omitempty"`
-	DesiredWeight  int `json:"desiredWeight"`
+	DesiredWeight  int `json:"desiredWeight"` // Required in input
 }
 
-// Bind function to check for errors during unmarshalling input request
-func (a *RackInputStandard) Bind(r *http.Request) error {
-	if a.BarWeight == 0 {
-		a.BarWeight = AssumeDefaults().BarWeight
+// Bind is a method on RackInputStandard to process and validate the request payload.
+func (ris *RackInputStandard) Bind(r *http.Request) error {
+	if ris.BarWeight == 0 { // If not provided, default to standard Olympic bar
+		ris.BarWeight = AssumeDefaults().BarWeight
 	}
-	if a.DesiredWeight == 0 || a.DesiredWeight <= a.BarWeight {
-		return errors.New("A valid desired weight must be provided")
+    if ris.BarWeight < 0 {
+        return errors.New("bar weight cannot be negative")
+    }
+	if ris.DesiredWeight == 0 {
+		return errors.New("a valid desired weight must be provided")
 	}
-
+	if ris.DesiredWeight <= ris.BarWeight {
+		return errors.New("desired weight must be greater than bar weight")
+	}
+	// Plate counts (Hundos, FortyFives, etc.) default to 0 if not in payload,
+	// meaning "0 pairs available" for POST requests.
 	return nil
 }
 
-// DecreaseWeight subtracts number of available plates as they are calculated
-func (a *RackInputStandard) DecreaseWeight(name string) {
-	switch name {
+// DecreaseWeight reduces the count of a specific plate type.
+// This is called on the *copy* of available plates during calculation.
+func (ris *RackInputStandard) DecreaseWeight(plateName string) {
+	switch plateName {
 	case "Hundos":
-		a.Hundos--
-	case "FiftyFives":
-		a.FiftyFives--
+		ris.Hundos--
 	case "FortyFives":
-		a.FortyFives--
+		ris.FortyFives--
 	case "ThirtyFives":
-		a.ThirtyFives--
+		ris.ThirtyFives--
 	case "TwentyFives":
-		a.TwentyFives--
+		ris.TwentyFives--
 	case "Tens":
-		a.Tens--
+		ris.Tens--
 	case "Fives":
-		a.Fives--
+		ris.Fives--
 	case "TwoDotFives":
-		a.TwoDotFives--
+		ris.TwoDotFives--
 	case "OneDotTwoFives":
-		a.OneDotTwoFives--
+		ris.OneDotTwoFives--
 	}
 }
 
-//ReturnedValueStandard is the value that is returned to a client
+// ReturnedValueStandard is the structure of the JSON response.
 type ReturnedValueStandard struct {
-	*RackInputStandard
-	AchievedWeight int    `json:"achievedWeight"`
-	Message        string `json:"message,omitempty"`
+	*RackInputStandard        // Embeds the plates *to use* for the lift
+	AchievedWeight     int    `json:"achievedWeight"`
+	Message            string `json:"message,omitempty"`
 }
 
 /* Util Functions */
 
+// getEnv retrieves an environment variable or returns a fallback value.
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -227,51 +334,53 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// ErrResponse renderer type for handling all sorts of errors.
+// ErrResponse is a generic renderer for API error responses.
 type ErrResponse struct {
-	Err            error `json:"-"` // low-level runtime error
-	HTTPStatusCode int   `json:"-"` // http response status code
-
-	StatusText string `json:"status"`          // user-level status message
-	AppCode    int64  `json:"code,omitempty"`  // application-specific error code
-	ErrorText  string `json:"error,omitempty"` // application-level error message, for debugging
+	Err            error  `json:"-"` // Low-level runtime error (not exposed to client)
+	HTTPStatusCode int    `json:"-"` // HTTP response status code
+	StatusText     string `json:"status"`          // User-level status message
+	AppCode        int64  `json:"code,omitempty"`  // Application-specific error code
+	ErrorText      string `json:"error,omitempty"` // Application-level error message for debugging
 }
 
-// Render function for rendering errors back a client
+// Render sets the HTTP status code for the error response.
 func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 	render.Status(r, e.HTTPStatusCode)
 	return nil
 }
 
-// ErrInvalidRequest is used to return an invalid response to client
+// ErrInvalidRequest creates a standardized "400 Bad Request" response.
 func ErrInvalidRequest(err error) render.Renderer {
 	return &ErrResponse{
 		Err:            err,
-		HTTPStatusCode: 400,
+		HTTPStatusCode: http.StatusBadRequest,
 		StatusText:     "Invalid request.",
 		ErrorText:      err.Error(),
 	}
 }
 
-// ErrInternal is used to return an internal error response
+// ErrInternal creates a standardized "500 Internal Server Error" response.
 func ErrInternal() render.Renderer {
 	return &ErrResponse{
-		Err:            nil,
-		HTTPStatusCode: 500,
-		StatusText:     "Internal Error",
-		ErrorText:      "Internal Error, we apologize",
+		Err:            nil, // Specific error is logged server-side
+		HTTPStatusCode: http.StatusInternalServerError,
+		StatusText:     "Internal Server Error.",
+		ErrorText:      "An unexpected error occurred. Please try again later.",
 	}
 }
 
-// AssumeDefaults sets default amounts for input if none are provided
+// AssumeDefaults provides a default set of available plates and bar weight.
+// Used for GET requests where the user doesn't specify their available equipment.
 func AssumeDefaults() RackInputStandard {
 	return RackInputStandard{
-		BarWeight:   45,
-		FortyFives:  10,
-		ThirtyFives: 10,
-		TwentyFives: 10,
-		Tens:        10,
-		Fives:       10,
-		TwoDotFives: 10,
+		BarWeight:      45,  // Standard Olympic bar weight in lbs
+		Hundos:         10, 
+		FortyFives:     10,
+		ThirtyFives:    10,
+		TwentyFives:    10,
+		Tens:           10,
+		Fives:          10,
+		TwoDotFives:    10,
+		OneDotTwoFives: 10,
 	}
 }

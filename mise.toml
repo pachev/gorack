@@ -1,0 +1,112 @@
+[tools]
+air = "latest"
+go = "1.23"
+
+[tasks]
+# Basic utility tasks
+[tasks.tidy]
+description = "Tidies Go module dependencies (go mod tidy)."
+run = "go mod tidy"
+
+[tasks.clean]
+description = "Cleans build artifacts, temporary files, and air logs."
+run = "go clean && rm -rf ./tmp && rm -f air-build.log"
+
+# Build tasks
+[tasks.build]
+description = "Builds the application binary to ./tmp/gorack."
+run = "mkdir -p tmp && go build -o ./tmp/gorack ."
+sources = ["*.go", "go.mod", "go.sum"]
+depends = ["tidy"]  # Ensure dependencies are tidy before building
+
+# Execution tasks
+[tasks.run]
+description = "Runs the built application. Set API_PORT env var for custom port."
+run = "./tmp/gorack"
+depends = ["build"] 
+env = { API_PORT = "8080" }
+
+# Development tasks
+[tasks.setup-air]
+description = "Creates or updates the Air configuration file."
+run = """
+#!/usr/bin/env bash
+cat > .air.toml << 'EOF'
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Command to run when air starts
+cmd = "go build -o ./tmp/gorack ."
+# Binary file produced by cmd
+bin = "./tmp/gorack"
+# Watch these directories for changes
+include_ext = ["go", "mod", "sum"]
+# Exclude these directories
+exclude_dir = ["tmp"]
+# Log file
+log = "air-build.log"
+# Delay after each execution
+delay = 1000 # ms
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[log]
+time = true
+
+[misc]
+# Allow air to clean up old binary files
+clean_on_exit = true
+EOF
+echo ".air.toml configuration created/updated"
+"""
+
+[tasks.watch]
+description = "Watches for file changes and live reloads using 'air'."
+run = "air"
+depends = ["build", "setup-air"]
+
+# Combined tasks
+[tasks.dev]
+description = "Sets up development environment: builds and watches for changes."
+depends = ["build", "watch"]
+
+[tasks.rebuild]
+description = "Clean rebuild: removes artifacts and rebuilds the application."
+depends = ["clean", "build"]
+
+[tasks.swagger]
+description = "Generates Swagger documentation from code comments."
+run = """
+#!/usr/bin/env bash
+# Check if swag is installed
+if ! command -v swag &> /dev/null; then
+    echo "Installing swag CLI tool..."
+    go install github.com/swaggo/swag/cmd/swag@latest
+fi
+
+# Make sure required packages are installed
+echo "Ensuring swagger dependencies are installed..."
+go get -u github.com/swaggo/http-swagger/v2
+go get -u github.com/swaggo/swag
+
+# Generate the swagger docs
+echo "Generating Swagger documentation..."
+swag init
+echo "Swagger documentation generated successfully!"
+echo "View the documentation at http://localhost:8080/docs/ when the server is running."
+"""
+
+# Default task aliases
+[tasks.all]
+description = "Default task: builds the application."
+alias = "build"
+
+[tasks.default]
+description = "Default task: builds the application."
+alias = "build"

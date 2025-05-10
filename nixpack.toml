@@ -1,0 +1,33 @@
+[phases.setup]
+nixPkgs = ["go_1_23", "gcc", "git"]
+
+[phases.install]
+cmds = [
+  "go mod download"
+]
+
+[phases.build]
+cmds = [
+  "go build -o bin/gorack ."
+]
+
+[start]
+cmd = "bin/gorack"
+
+[variables]
+GOFLAGS = "-buildvcs=false"
+
+[envs]
+API_PORT = "4201"
+
+# Configuration for deployment platforms
+[deploy]
+startCmd = "bin/gorack"
+restartPolicyType = "ON_FAILURE"
+healthcheckPath = "/v1/api/rack?weight=135"
+healthcheckTimeout = 3
+healthcheckInterval = 20
+
+# Nixpack caching configuration
+[cache]
+directories = ["~/.cache/go-build", "~/go/pkg"]
