@@ -6,6 +6,7 @@ var app = new Vue({
         desiredWeight: 185,
         barWeights: {
             'ezBar': 25,
+            'fiftyFiveBar': 55,
             'shortBar': 35,
             'olympicBar': 45
         },

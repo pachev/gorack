@@ -87,6 +87,11 @@
                                             </span>
                                         </p>
                                         <p>
+                                            <span v-on:click="selectBar('fiftyFiveBar')" class="bar-type" v-bind:class="{ active: barSelect=='fiftyFiveBar'}">
+                                                55 lb Bar
+                                            </span>
+                                        </p>
+                                        <p>
                                             <span v-on:click="selectBar('shortBar')" class="bar-type" v-bind:class="{ active: barSelect=='shortBar'}">
                                                 Short Bar (35 lb)
                                             </span>
